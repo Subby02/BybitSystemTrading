@@ -12,8 +12,8 @@ class TradingBot:
     sellOrderID = ''
     candleValue = [0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.8,0.8,0.8,0.8,0.8,0.8,0.9,0.9,0.9,1,1,1]
 
-    api_key = ''
-    api_secret = ''
+    api_key = 'LxNzzs0x99BStEAeiR'
+    api_secret = 'WJ5DnskxMT1jZiHwtoESBLNnKBPkHnxGbD6P'
 
     session = HTTP(
         endpoint="https://api.bybit.com",
@@ -245,14 +245,15 @@ class TradingBot:
                 else:
                     self.buyLimitOrder(self.getAmount(), self.getBidPrice())
                 self.sellLimitOrder(self.getAmount(), round(self.getEntryPrice() * 1.003 , 1))
-            if self.sellOrderID != '' and self.buyOrderID != '':
+            if self.buyOrderID != '':
                 if self.getOrderStatus(self.buyOrderID) == 'Filled':
                     self.botState = '2+PosFilled'
                     print('[', datetime.datetime.now(), '] botState :', self.botState)
                     self.cancelOrder(self.sellOrderID)
                     self.buyOrderID = ''
                     self.sellOrderID = ''
-                elif self.getOrderStatus(self.sellOrderID) == 'Filled':
+            if self.sellOrderID != '':
+                if self.getOrderStatus(self.sellOrderID) == 'Filled':
                     self.botState = 'Idle'
                     print('[', datetime.datetime.now(), '] botState :', self.botState)
                     self.cancelOrder(self.buyOrderID)
@@ -265,12 +266,13 @@ class TradingBot:
                 else:
                     self.buyLimitOrder(self.getAmount(), self.getBidPrice())
                 self.sellLimitOrder(self.getAmount() - self.tradeUnit, round(self.getEntryPrice(),1))
-            if self.sellOrderID != '' and self.buyOrderID != '':
+            if self.sellOrderID != '':
                 if self.getOrderStatus(self.buyOrderID) == 'Filled':
                     self.cancelOrder(self.sellOrderID)
                     self.buyOrderID = ''
                     self.sellOrderID = ''
-                elif self.getOrderStatus(self.sellOrderID) == 'Filled':
+            if self.buyOrderID != '':
+                if self.getOrderStatus(self.sellOrderID) == 'Filled':
                     self.botState = '1PosFilled'
                     print('[', datetime.datetime.now(), '] botState :', self.botState)
                     self.cancelOrder(self.buyOrderID)
