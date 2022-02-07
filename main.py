@@ -12,8 +12,8 @@ class TradingBot:
     sellOrderID = ''
     candleValue = [0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.8,0.8,0.8,0.8,0.8,0.8,0.9,0.9,0.9,1,1,1]
 
-    api_key = 'LxNzzs0x99BStEAeiR'
-    api_secret = 'WJ5DnskxMT1jZiHwtoESBLNnKBPkHnxGbD6P'
+    api_key = ''
+    api_secret = ''
 
     session = HTTP(
         endpoint="https://api.bybit.com",
