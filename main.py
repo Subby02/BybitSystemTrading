@@ -266,12 +266,12 @@ class TradingBot:
                 else:
                     self.buyLimitOrder(self.getAmount(), self.getBidPrice())
                 self.sellLimitOrder(self.getAmount() - self.tradeUnit, round(self.getEntryPrice(),1))
-            if self.sellOrderID != '':
+            if self.buyOrderID != '':
                 if self.getOrderStatus(self.buyOrderID) == 'Filled':
                     self.cancelOrder(self.sellOrderID)
                     self.buyOrderID = ''
                     self.sellOrderID = ''
-            if self.buyOrderID != '':
+            if self.sellOrderID != '':
                 if self.getOrderStatus(self.sellOrderID) == 'Filled':
                     self.botState = '1PosFilled'
                     print('[', datetime.datetime.now(), '] botState :', self.botState)
