@@ -222,12 +222,13 @@ class TradingBot:
         print('[', datetime.datetime.now(), '] all order cancel')
 
     def cancelOrder(self,id):
-        self.session.cancel_active_order(
-            symbol="BTCUSDT",
-            order_id=id
-        )
+        if self.getOrderStatus(id) == 'New':
+            self.session.cancel_active_order(
+                symbol="BTCUSDT",
+                order_id=id
+            )
 
-        print('[', datetime.datetime.now(), ']',id,'order cancel')
+            print('[', datetime.datetime.now(), ']',id,'order cancel')
 
     def checkOrder(self):
         if self.botState == 'Idle':
@@ -244,18 +245,19 @@ class TradingBot:
                 else:
                     self.buyLimitOrder(self.getAmount(), self.getBidPrice())
                 self.sellLimitOrder(self.getAmount(), round(self.getEntryPrice() * 1.003 , 1))
-            if self.getOrderStatus(self.buyOrderID) == 'Filled':
-                self.botState = '2+PosFilled'
-                print('[', datetime.datetime.now(), '] botState :', self.botState)
-                self.cancelOrder(self.sellOrderID)
-                self.buyOrderID = ''
-                self.sellOrderID = ''
-            elif self.getOrderStatus(self.sellOrderID) == 'Filled':
-                self.botState = 'Idle'
-                print('[', datetime.datetime.now(), '] botState :', self.botState)
-                self.cancelOrder(self.buyOrderID)
-                self.buyOrderID = ''
-                self.sellOrderID = ''
+            if self.sellOrderID != '' and self.buyOrderID != '':
+                if self.getOrderStatus(self.buyOrderID) == 'Filled':
+                    self.botState = '2+PosFilled'
+                    print('[', datetime.datetime.now(), '] botState :', self.botState)
+                    self.cancelOrder(self.sellOrderID)
+                    self.buyOrderID = ''
+                    self.sellOrderID = ''
+                elif self.getOrderStatus(self.sellOrderID) == 'Filled':
+                    self.botState = 'Idle'
+                    print('[', datetime.datetime.now(), '] botState :', self.botState)
+                    self.cancelOrder(self.buyOrderID)
+                    self.buyOrderID = ''
+                    self.sellOrderID = ''
         elif self.botState == '2+PosFilled':
             if self.sellOrderID == '' and self.buyOrderID == '':
                 if self.getLastPrice() - self.candleAvg * 0.9 < self.getCurrentPrice():
@@ -263,16 +265,17 @@ class TradingBot:
                 else:
                     self.buyLimitOrder(self.getAmount(), self.getBidPrice())
                 self.sellLimitOrder(self.getAmount() - self.tradeUnit, round(self.getEntryPrice(),1))
-            if self.getOrderStatus(self.buyOrderID) == 'Filled':
-                self.cancelOrder(self.sellOrderID)
-                self.buyOrderID = ''
-                self.sellOrderID = ''
-            elif self.getOrderStatus(self.sellOrderID) == 'Filled':
-                self.botState = '1PosFilled'
-                print('[', datetime.datetime.now(), '] botState :', self.botState)
-                self.cancelOrder(self.buyOrderID)
-                self.buyOrderID = ''
-                self.sellOrderID = ''
+            if self.sellOrderID != '' and self.buyOrderID != '':
+                if self.getOrderStatus(self.buyOrderID) == 'Filled':
+                    self.cancelOrder(self.sellOrderID)
+                    self.buyOrderID = ''
+                    self.sellOrderID = ''
+                elif self.getOrderStatus(self.sellOrderID) == 'Filled':
+                    self.botState = '1PosFilled'
+                    print('[', datetime.datetime.now(), '] botState :', self.botState)
+                    self.cancelOrder(self.buyOrderID)
+                    self.buyOrderID = ''
+                    self.sellOrderID = ''
 
 
         # if self.sellOrderID != '' and self.buyOrderID != '':
