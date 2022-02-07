@@ -7,21 +7,19 @@ class TradingBot:
     tradeUnit = 0.001
     fallCount = 0
     candleAvg = 0
+    botState = 'Idle'
     buyOrderID = ''
     sellOrderID = ''
     candleValue = [0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.7,0.8,0.8,0.8,0.8,0.8,0.8,0.9,0.9,0.9,1,1,1]
 
-    api_key = ''
-    api_secret = ''
+    api_key = 'LxNzzs0x99BStEAeiR'
+    api_secret = 'WJ5DnskxMT1jZiHwtoESBLNnKBPkHnxGbD6P'
 
     session = HTTP(
         endpoint="https://api.bybit.com",
         api_key=api_key,
         api_secret=api_secret
     )
-
-    #==========================Position==========================
-
 
     def getEntryPrice(self):
         positions = self.session.my_position(
@@ -71,8 +69,6 @@ class TradingBot:
         balance = self.session.get_wallet_balance(coin="USDT")
         return balance['result']['USDT']['available_balance']
 
-    #==========================Candle==========================
-
     def getCurrentPrice(self):
         now = datetime.datetime.now()
         today = datetime.datetime(
@@ -94,7 +90,6 @@ class TradingBot:
         )
 
         return result['result'][0]['close']
-
 
     def candleAvgInit(self):
         now = datetime.datetime.now()
@@ -131,10 +126,10 @@ class TradingBot:
 
         self.candleAvg = sum/12
 
-        print('[', datetime.datetime.now(), '] 5분 봉 평균 초기화 | 평균 캔들 :', self.candleAvg , '| fall count :', self.fallCount)
+        print('[', datetime.datetime.now(), '] 5m candle avg init | candleAvg :', self.candleAvg , '| fallCount :', self.fallCount)
 
-        if self.getAmount() == 0:
-            self.makeOrder()
+        if self.botState == '1PosActive':
+            self.botState = 'Idle'
 
     def makeOrder(self):
         now = datetime.datetime.now()
@@ -169,15 +164,13 @@ class TradingBot:
                 from_time=from_time
             )
 
-        self.cancelAllOrder()
-        print('[', datetime.datetime.now(), '] size :', self.getAmount())
+        self.botState = '1PosActive'
+        print('[', datetime.datetime.now(), '] botState :' , self.botState)
         if result['result'][0]['close'] - self.candleAvg * 0.9 < result['result'][-1]['close']:
             self.buyLimitOrder(self.tradeUnit, round(result['result'][0]['close'] - self.candleAvg * 0.9,1))
         else:
             self.buyLimitOrder(self.tradeUnit, self.getBidPrice())
-            print('현재 가격으로 매수')
-
-    #==========================Buy,Sell==========================
+            print('[', datetime.datetime.now(), '] current price order')
 
     def getBidPrice(self):
         orderbook = self.session.orderbook(symbol="BTCUSDT")
@@ -185,6 +178,7 @@ class TradingBot:
         return orderbook['result'][0]['price']
 
     def buyLimitOrder(self,size,price):
+        if self.buyOrderID != '': self.cancelOrder(self.buyOrderID)
         if self.getBalance() > float(size)*float(price)/float(self.getLeverage()):
             order = self.session.place_active_order(
                 symbol="BTCUSDT",
@@ -199,11 +193,12 @@ class TradingBot:
 
             self.buyOrderID = order['result']['order_id']
 
-            print('[', datetime.datetime.now(), '] 지정가 매수 주문 | size :' , size , '| price :' ,price , '| id :' , order['result']['order_id'])
+            print('[', datetime.datetime.now(), '] limit buy order | size :' , size , '| price :' ,price , '| id :' , order['result']['order_id'])
         else:
-            print('[', datetime.datetime.now(), '] 잔액 부족으로 매수 주문 취소')
+            print('[', datetime.datetime.now(), '] cancel due to lack of balance')
 
     def sellLimitOrder(self,size,price):
+        if self.sellOrderID != '': self.cancelOrder(self.sellOrderID)
         order = self.session.place_active_order(
             symbol="BTCUSDT",
             side="Sell",
@@ -217,16 +212,14 @@ class TradingBot:
 
         self.sellOrderID = order['result']['order_id']
 
-        print('[', datetime.datetime.now(), '] 지정가 매도 주문 | size :' , size , '| price :' ,price , '| id :' , order['result']['order_id'])
+        print('[', datetime.datetime.now(), '] limit sell order | size :' , size , '| price :' ,price , '| id :' , order['result']['order_id'])
 
     def cancelAllOrder(self):
         self.session.cancel_all_active_orders(
             symbol="BTCUSDT"
         )
 
-        print('[', datetime.datetime.now(), '] 모든 주문 취소')
-        self.buyOrderID = ''
-        self.sellOrderID = ''
+        print('[', datetime.datetime.now(), '] all order cancel')
 
     def cancelOrder(self,id):
         self.session.cancel_active_order(
@@ -234,33 +227,76 @@ class TradingBot:
             order_id=id
         )
 
-        print('[', datetime.datetime.now(), '] ',id,'주문 취소')
-
-    #============================
+        print('[', datetime.datetime.now(), ']',id,'order cancel')
 
     def checkOrder(self):
-        if self.sellOrderID != '' and self.buyOrderID != '':
-            buyOrderStatus = self.getOrderStatus(self.buyOrderID)
-            sellOrderStatus = self.getOrderStatus(self.sellOrderID)
-            if buyOrderStatus == 'Filled' or sellOrderStatus == 'Filled' or buyOrderStatus == 'Cancelled' or sellOrderStatus == 'Cancelled':
-                self.cancelAllOrder()
-            if sellOrderStatus == 'Filled' and self.getAmount() == 0:
-                self.makeOrder()
-
-        if self.getAmount() == self.tradeUnit:
-            if self.sellOrderID == '':
+        if self.botState == 'Idle':
+            self.makeOrder()
+        elif self.botState == '1PosActive':
+            if self.getOrderStatus(self.buyOrderID) == 'Filled':
+                self.botState = '1PosFilled'
+                print('[', datetime.datetime.now(), '] botState :', self.botState)
+                self.buyOrderID = ''
+        elif self.botState == '1PosFilled':
+            if self.sellOrderID == '' and self.buyOrderID == '':
                 if self.getLastPrice() - self.candleAvg * 0.9 < self.getCurrentPrice():
                     self.buyLimitOrder(self.getAmount(), round(self.getLastPrice() - self.candleAvg * 0.9,1))
                 else:
                     self.buyLimitOrder(self.getAmount(), self.getBidPrice())
                 self.sellLimitOrder(self.getAmount(), round(self.getEntryPrice() * 1.003 , 1))
-        elif self.getAmount() > self.tradeUnit:
+            if self.getOrderStatus(self.buyOrderID) == 'Filled':
+                self.botState = '2+PosFilled'
+                print('[', datetime.datetime.now(), '] botState :', self.botState)
+                self.cancelOrder(self.sellOrderID)
+                self.buyOrderID = ''
+                self.sellOrderID = ''
+            elif self.getOrderStatus(self.sellOrderID) == 'Filled':
+                self.botState = 'Idle'
+                print('[', datetime.datetime.now(), '] botState :', self.botState)
+                self.cancelOrder(self.buyOrderID)
+                self.buyOrderID = ''
+                self.sellOrderID = ''
+        elif self.botState == '2+PosFilled':
             if self.sellOrderID == '' and self.buyOrderID == '':
                 if self.getLastPrice() - self.candleAvg * 0.9 < self.getCurrentPrice():
                     self.buyLimitOrder(self.getAmount(), round(self.getLastPrice() - self.candleAvg * 0.9,1))
                 else:
                     self.buyLimitOrder(self.getAmount(), self.getBidPrice())
                 self.sellLimitOrder(self.getAmount() - self.tradeUnit, round(self.getEntryPrice(),1))
+            if self.getOrderStatus(self.buyOrderID) == 'Filled':
+                self.cancelOrder(self.sellOrderID)
+                self.buyOrderID = ''
+                self.sellOrderID = ''
+            elif self.getOrderStatus(self.sellOrderID) == 'Filled':
+                self.botState = '1PosFilled'
+                print('[', datetime.datetime.now(), '] botState :', self.botState)
+                self.cancelOrder(self.buyOrderID)
+                self.buyOrderID = ''
+                self.sellOrderID = ''
+
+
+        # if self.sellOrderID != '' and self.buyOrderID != '':
+        #     buyOrderStatus = self.getOrderStatus(self.buyOrderID)
+        #     sellOrderStatus = self.getOrderStatus(self.sellOrderID)
+        #     if buyOrderStatus == 'Filled' or sellOrderStatus == 'Filled' or buyOrderStatus == 'Cancelled' or sellOrderStatus == 'Cancelled':
+        #         self.cancelAllOrder()
+        #     if sellOrderStatus == 'Filled' and self.getAmount() == 0:
+        #         self.makeOrder()
+        #
+        # if self.getAmount() == self.tradeUnit:
+        #     if self.sellOrderID == '':
+        #         if self.getLastPrice() - self.candleAvg * 0.9 < self.getCurrentPrice():
+        #             self.buyLimitOrder(self.getAmount(), round(self.getLastPrice() - self.candleAvg * 0.9,1))
+        #         else:
+        #             self.buyLimitOrder(self.getAmount(), self.getBidPrice())
+        #         self.sellLimitOrder(self.getAmount(), round(self.getEntryPrice() * 1.003 , 1))
+        # elif self.getAmount() > self.tradeUnit:
+        #     if self.sellOrderID == '' and self.buyOrderID == '':
+        #         if self.getLastPrice() - self.candleAvg * 0.9 < self.getCurrentPrice():
+        #             self.buyLimitOrder(self.getAmount(), round(self.getLastPrice() - self.candleAvg * 0.9,1))
+        #         else:
+        #             self.buyLimitOrder(self.getAmount(), self.getBidPrice())
+        #         self.sellLimitOrder(self.getAmount() - self.tradeUnit, round(self.getEntryPrice(),1))
 
 
 
