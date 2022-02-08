@@ -275,7 +275,8 @@ class TradingBot:
                 if self.getOrderStatus(self.sellOrderID) == 'Filled':
                     self.botState = '1PosFilled'
                     print('[', datetime.datetime.now(), '] botState :', self.botState)
-                    self.cancelOrder(self.buyOrderID)
+                    if self.buyOrderID != '':
+                        self.cancelOrder(self.buyOrderID)
                     self.buyOrderID = ''
                     self.sellOrderID = ''
 
