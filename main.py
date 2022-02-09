@@ -129,6 +129,10 @@ class TradingBot:
 
         print('[', datetime.datetime.now(), '] 5m candle avg init | candleAvg :', self.candleAvg , '| fallCount :', self.fallCount)
 
+        if self.buyOrderID != '':
+            self.cancelOrder(self.buyOrderID)
+        if self.sellOrderID != '':
+            self.cancelOrder(self.sellOrderID)
         self.buyOrderID = ''
         self.sellOrderID = ''
 
