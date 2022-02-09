@@ -55,7 +55,8 @@ class TradingBot:
 
         for trade in trades['result']['data']:
             if trade['side'] == 'Buy':
-                return trade['order_price']
+                if trade['exec_type'] == 'Trade':
+                    return trade['order_price']
 
     def getOrderStatus(self,id):
         status = self.session.query_active_order(
@@ -127,6 +128,9 @@ class TradingBot:
         self.candleAvg = sum/12
 
         print('[', datetime.datetime.now(), '] 5m candle avg init | candleAvg :', self.candleAvg , '| fallCount :', self.fallCount)
+
+        self.buyOrderID = ''
+        self.sellOrderID = ''
 
         if self.botState == '1PosActive':
             self.botState = 'Idle'
@@ -281,34 +285,17 @@ class TradingBot:
                     self.sellOrderID = ''
 
 
-        # if self.sellOrderID != '' and self.buyOrderID != '':
-        #     buyOrderStatus = self.getOrderStatus(self.buyOrderID)
-        #     sellOrderStatus = self.getOrderStatus(self.sellOrderID)
-        #     if buyOrderStatus == 'Filled' or sellOrderStatus == 'Filled' or buyOrderStatus == 'Cancelled' or sellOrderStatus == 'Cancelled':
-        #         self.cancelAllOrder()
-        #     if sellOrderStatus == 'Filled' and self.getAmount() == 0:
-        #         self.makeOrder()
-        #
-        # if self.getAmount() == self.tradeUnit:
-        #     if self.sellOrderID == '':
-        #         if self.getLastPrice() - self.candleAvg * 0.9 < self.getCurrentPrice():
-        #             self.buyLimitOrder(self.getAmount(), round(self.getLastPrice() - self.candleAvg * 0.9,1))
-        #         else:
-        #             self.buyLimitOrder(self.getAmount(), self.getBidPrice())
-        #         self.sellLimitOrder(self.getAmount(), round(self.getEntryPrice() * 1.003 , 1))
-        # elif self.getAmount() > self.tradeUnit:
-        #     if self.sellOrderID == '' and self.buyOrderID == '':
-        #         if self.getLastPrice() - self.candleAvg * 0.9 < self.getCurrentPrice():
-        #             self.buyLimitOrder(self.getAmount(), round(self.getLastPrice() - self.candleAvg * 0.9,1))
-        #         else:
-        #             self.buyLimitOrder(self.getAmount(), self.getBidPrice())
-        #         self.sellLimitOrder(self.getAmount() - self.tradeUnit, round(self.getEntryPrice(),1))
-
-
 
 t = TradingBot()
+
+if t.getAmount() == t.tradeUnit:
+    t.botState = '1PosFilled'
+elif t.getAmount() > t.tradeUnit:
+    t.botState = '2+PosFilled'
+
 t.cancelAllOrder()
 t.candleAvgInit()
+
 
 for h in range(24):
     for m in range(0,60,5):
