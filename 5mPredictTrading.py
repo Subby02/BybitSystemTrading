@@ -182,7 +182,7 @@ class TradingBot:
 
     def checkOrder(self):
         size = self.getAmount()
-        entryPrice = self.getEntryPrice()
+        entryPrice = int(self.getEntryPrice() / 0.5) * 0.5
         if size == self.tradeUnit:
             price = int(entryPrice * 1.003 / 0.5) * 0.5
             if self.sellOrderID != '':
@@ -195,7 +195,6 @@ class TradingBot:
             if self.sellOrderID != '':
                 prePrice = self.getOrderPrice(self.sellOrderID)
                 preSize = self.getOrderSize(self.sellOrderID)
-                print(prePrice , entryPrice , preSize , size - self.tradeUnit)
                 if prePrice == entryPrice and preSize == size - self.tradeUnit:
                     return
             self.sellLimitOrder(size - self.tradeUnit, entryPrice)
