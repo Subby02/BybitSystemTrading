@@ -123,8 +123,6 @@ class TradingBot:
 
     def buyLimitOrder(self, size, price):
         if self.buyOrderID != '':
-            if self.getOrderPrice(self.buyOrderID) == price and self.getOrderSize(self.buyOrderID) == size:
-                return
             self.cancelOrder(self.buyOrderID)
         if self.getBalance() > float(size) * float(price) / float(self.getLeverage()):
             order = self.session.place_active_order(
@@ -183,6 +181,16 @@ class TradingBot:
     def checkOrder(self):
         size = self.getAmount()
         entryPrice = int(self.getEntryPrice() / 0.5) * 0.5
+
+        if self.sellOrderID != '' and self.buyOrderID != '':
+            if self.getOrderStatus(self.sellOrderID) == 'Filled' and self.getOrderStatus(self.buyOrderID) == 'New':
+                price = self.getOrderPrice(self.buyOrderID)
+                if size == 0:
+                    self.buyLimitOrder(self.tradeUnit, price)
+                else:
+                    if entryPrice > price:
+                        self.buyLimitOrder(size, price)
+
         if size == self.tradeUnit:
             price = int(entryPrice * 1.003 / 0.5) * 0.5
             if self.sellOrderID != '':
