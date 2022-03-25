@@ -237,8 +237,10 @@ class TradingBot:
                 if self.getOrderStatus(self.sellOrderID) == 'Filled':
                     self.botState = 'Idle'
                     print('[', datetime.datetime.now(), '] botState :', self.botState)
-                    if self.getOrderStatus(self.buyOrderID) == 'New':
-                        self.cancelOrder(self.buyOrderID)
+                    if self.buyOrderID != '':
+                        if self.getOrderStatus(self.buyOrderID) == 'New':
+                            self.cancelOrder(self.buyOrderID)
+
                     self.buyLimitOrder(self.tradeUnit, self.getClosePrice() - self.candleAvg)
                     self.sellOrderID = ''
             if self.buyOrderID != '':
@@ -257,8 +259,9 @@ class TradingBot:
 
                     price = int(self.getEntryPrice() * 1.005 / 0.5) * 0.5
                     self.sellLimitOrder(self.getAmount(), price)
-                    if self.getOrderStatus(self.buyOrderID) == 'New':
-                        self.cancelOrder(self.buyOrderID)
+                    if self.buyOrderID != '':
+                        if self.getOrderStatus(self.buyOrderID) == 'New':
+                            self.cancelOrder(self.buyOrderID)
 
                     if self.getEntryPrice() * 0.998 > self.getClosePrice() - self.candleAvg:
                         self.buyLimitOrder(self.getAmount(), self.getClosePrice() - self.candleAvg)
