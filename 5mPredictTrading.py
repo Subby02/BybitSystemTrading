@@ -10,8 +10,10 @@ from pybit import HTTP
 
 class TradingBot:
     tradeUnit = 0.002
+    notBuyRate = 0.999
+    takeProfitRate = 1.005
+
     candleAvg = 0
-    FMBuy = False
     botState = 'Idle'
     buyOrderID = ''
     sellOrderID = ''
@@ -152,7 +154,7 @@ class TradingBot:
             self.buyLimitOrder(self.tradeUnit, tickers[-1]['close'] - self.candleAvg)
             self.botState = '1PosActive'
         else:
-            if self.getEntryPrice()*0.998 > tickers[-1]['close'] - self.candleAvg:
+            if self.getEntryPrice()*self.notBuyRate > tickers[-1]['close'] - self.candleAvg:
                 self.buyLimitOrder(self.getAmount(), tickers[-1]['close'] - self.candleAvg)
 
     def buyLimitOrder(self, size, price):
@@ -208,20 +210,6 @@ class TradingBot:
 
             print('[', datetime.datetime.now(), ']', id, 'order cancel')
 
-    def checkPosition(self):
-        if self.getAmount() == self.tradeUnit:
-            self.botState = '1PosFilled'
-            print('[', datetime.datetime.now(), '] botState :', self.botState)
-            self.buyLimitOrder(self.getAmount(), self.getClosePrice() - self.candleAvg)
-            price = int(self.getEntryPrice() * 1.005 / 0.5) * 0.5
-            self.sellLimitOrder(self.getAmount(),price)
-        elif self.getAmount() > self.tradeUnit:
-            self.botState = '2+PosFilled'
-            print('[', datetime.datetime.now(), '] botState :', self.botState)
-            self.buyLimitOrder(self.getAmount(), self.getClosePrice() - self.candleAvg)
-            entryPrice = int(self.getEntryPrice() / 0.5) * 0.5
-            self.sellLimitOrder(self.getAmount()-self.tradeUnit, entryPrice)
-
     def checkOrder(self):
         if self.botState == '1PosActive':
             if self.buyOrderID != '':
@@ -229,7 +217,7 @@ class TradingBot:
                     self.botState = '1PosFilled'
                     print('[', datetime.datetime.now(), '] botState :', self.botState)
 
-                    price = int(self.getEntryPrice() * 1.005 / 0.5) * 0.5
+                    price = int(self.getEntryPrice() * self.takeProfitRate / 0.5) * 0.5
                     self.sellLimitOrder(self.getAmount(), price)
                     self.buyOrderID = ''
         elif self.botState == '1PosFilled':
@@ -257,13 +245,13 @@ class TradingBot:
                     self.botState = '1PosFilled'
                     print('[', datetime.datetime.now(), '] botState :', self.botState)
 
-                    price = int(self.getEntryPrice() * 1.005 / 0.5) * 0.5
+                    price = int(self.getEntryPrice() * self.takeProfitRate / 0.5) * 0.5
                     self.sellLimitOrder(self.getAmount(), price)
                     if self.buyOrderID != '':
                         if self.getOrderStatus(self.buyOrderID) == 'New':
                             self.cancelOrder(self.buyOrderID)
 
-                    if self.getEntryPrice() * 0.998 > self.getClosePrice() - self.candleAvg:
+                    if self.getEntryPrice() * self.notBuyRate > self.getClosePrice() - self.candleAvg:
                         self.buyLimitOrder(self.getAmount(), self.getClosePrice() - self.candleAvg)
             if self.buyOrderID != '':
                 if self.getOrderStatus(self.buyOrderID) == 'Filled':
@@ -272,46 +260,9 @@ class TradingBot:
                     self.sellLimitOrder(self.getAmount() - self.tradeUnit, entryPrice)
                     self.buyOrderID = ''
 
-        # size = self.getAmount()
-        # entryPrice = int(self.getEntryPrice() / 0.5) * 0.5
-        #
-        # if self.sellOrderID != '' and self.buyOrderID != '':
-        #     if self.getOrderStatus(self.sellOrderID) == 'Filled' and self.getOrderStatus(self.buyOrderID) == 'New':
-        #         price = self.getOrderPrice(self.buyOrderID)
-        #         if size == 0:
-        #             prePrice = self.getOrderPrice(self.buyOrderID)
-        #             preSize = self.getOrderSize(self.buyOrderID)
-        #             if prePrice == price and preSize == self.tradeUnit:
-        #                 return
-        #             self.buyLimitOrder(self.tradeUnit, price)
-        #         else:
-        #             if entryPrice > price:
-        #                 prePrice = self.getOrderPrice(self.buyOrderID)
-        #                 preSize = self.getOrderSize(self.buyOrderID)
-        #                 if prePrice == price and preSize == size:
-        #                     return
-        #                 self.buyLimitOrder(size, price)
-        #
-        # if size == self.tradeUnit:
-        #     price = int(entryPrice * 1.01 / 0.5) * 0.5
-        #     if self.sellOrderID != '':
-        #         prePrice = self.getOrderPrice(self.sellOrderID)
-        #         preSize = self.getOrderSize(self.sellOrderID)
-        #         if prePrice == price and preSize == size:
-        #             return
-        #     self.sellLimitOrder(self.getAmount(), price)
-        # elif size > self.tradeUnit:
-        #     if self.sellOrderID != '':
-        #         prePrice = self.getOrderPrice(self.sellOrderID)
-        #         preSize = self.getOrderSize(self.sellOrderID)
-        #         if prePrice == entryPrice and preSize == size - self.tradeUnit:
-        #             return
-        #     self.sellLimitOrder(size - self.tradeUnit, entryPrice)
-
 t = TradingBot()
 t.cancelAllOrder()
 t.candleAvgInit()
-#t.checkPosition()
 
 for h in range(24):
     for m in range(0,60,5):
